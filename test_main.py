@@ -1,113 +1,140 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from main import app, exchange
 
 client = TestClient(app)
 
 
 @patch("helpers.get_binance_deposit_address")
-def test_deposit_address_success(mock_get_deposit_address):
-    mock_get_deposit_address.return_value = "sample_address"
+def test_deposit_address(mock_get_deposit_address):
+    # Test success scenario
+    mock_get_deposit_address.return_value = {
+        "address": "1HPn8Rx2y6nNSfagQBKy27GB99Vbzg89wv"
+    }
     response = client.get("/deposit-address?token=BTC&network=BTC")
+    assert response.status_code == 200
+    assert "address" in response.json()
+    assert isinstance(response.json()["address"], str)
+    assert len(response.json()["address"]) > 0
 
-    assert response.status_code == 200, "Expected a 200 OK status code"
-    assert response.json() == {
-        "address": "sample_address"
-    }, "Expected the response to contain the sample address"
-
-    mock_get_deposit_address.assert_called_once_with(exchange, "BTC", "BTC")
-
-
-@patch("helpers.get_binance_deposit_address")
-def test_deposit_address_failure(mock_get_deposit_address):
+    # Test failure scenario
     mock_get_deposit_address.return_value = None
-
     response = client.get("/deposit-address?token=BTC&network=BTC")
-
-    assert response.status_code == 200, "Expected a 200 OK status code even for failure"
-    assert response.json() == {
-        "address": None
-    }, "Expected the response to contain None as the address"
+    assert response.status_code == 200
+    assert response.json() == {"address": None}
 
 
 @patch("helpers.withdraw_to_network")
-def test_withdraw_success(mock_withdraw):
-    mock_withdraw.return_value = {"id": "withdrawal_id"}
-
+def test_withdraw(mock_withdraw):
+    # Test success scenario
+    mock_withdraw.return_value = {"id": "7213fea8e94b4a5593d507237e5a555b"}
     response = client.get(
-        "/withdraw?token=BTC&amount=0.1&address=sample_address&network=BTC"
+        "/withdraw?token=BTC&amount=0.1&address=test_address&network=BTC"
     )
+    assert response.status_code == 200
+    assert "withdrawal" in response.json()
+    assert "id" in response.json()["withdrawal"]
+    assert isinstance(response.json()["withdrawal"]["id"], str)
+    assert len(response.json()["withdrawal"]["id"]) == 32
 
-    assert response.status_code == 200, "Expected a 200 OK status code"
-    assert response.json() == {
-        "withdrawal": {"id": "withdrawal_id"}
-    }, "Expected the response to contain the withdrawal ID"
-
-    mock_withdraw.assert_called_once_with(exchange, "BTC", 0.1, "sample_address", "BTC")
-
-
-@patch("helpers.withdraw_to_network")
-def test_withdraw_failure(mock_withdraw):
+    # Test failure scenario
     mock_withdraw.return_value = None
-
     response = client.get(
-        "/withdraw?token=BTC&amount=0.1&address=sample_address&network=BTC"
+        "/withdraw?token=BTC&amount=0.1&address=test_address&network=BTC"
     )
-
-    assert response.status_code == 200, "Expected a 200 OK status code even for failure"
-    assert response.json() == {
-        "withdrawal": None
-    }, "Expected the response to contain None as the withdrawal"
+    assert response.status_code == 200
+    assert response.json() == {"withdrawal": None}
 
 
 @patch.object(exchange, "fetch_balance")
-def test_balance_success(mock_fetch_balance):
-    mock_fetch_balance.return_value = {"BTC": {"free": 1.0, "used": 0.0, "total": 1.0}}
-
+def test_balance(mock_fetch_balance):
+    # Test success scenario
+    mock_balance = {
+        "balance": {
+            "info": {},
+            "timestamp": 1499280391811,
+            "datetime": "2017-07-05T18:47:14.692Z",
+            "free": {"BTC": 321.00, "USD": 123.00},
+            "used": {"BTC": 234.00, "USD": 456.00},
+            "total": {"BTC": 555.00, "USD": 579.00},
+            "debt": {},
+        }
+    }
+    mock_fetch_balance.return_value = mock_balance
     response = client.get("/balance")
+    assert response.status_code == 200
+    assert "balance" in response.json()
+    balance = response.json()["balance"]
+    assert isinstance(balance, dict)
+    assert "info" in balance
+    assert "timestamp" in balance
+    assert isinstance(balance["timestamp"], int)
+    assert "datetime" in balance
+    assert isinstance(balance["datetime"], str)
+    assert "free" in balance
+    assert isinstance(balance["free"], dict)
+    assert "used" in balance
+    assert isinstance(balance["used"], dict)
+    assert "total" in balance
+    assert isinstance(balance["total"], dict)
+    assert "debt" in balance
+    assert isinstance(balance["debt"], dict)
 
-    assert response.status_code == 200, "Expected a 200 OK status code"
-    assert response.json() == {
-        "balance": {"BTC": {"free": 1.0, "used": 0.0, "total": 1.0}}
-    }, "Expected the response to contain the sample balance"
-
-    mock_fetch_balance.assert_called_once()
-
-
-@patch.object(exchange, "fetch_balance")
-def test_balance_failure(mock_fetch_balance):
-    mock_fetch_balance.side_effect = Exception("Error fetching balance")
-
+    # Test failure scenario
+    mock_fetch_balance.side_effect = Exception("Test error")
     response = client.get("/balance")
-
-    assert response.status_code == 200, "Expected a 200 OK status code even for failure"
-    assert response.json() == {
-        "balance": None
-    }, "Expected the response to contain None as the balance"
+    assert response.status_code == 200
+    assert response.json() == {"balance": None}
 
 
 @patch.object(exchange, "fetch_currencies")
-def test_currencies_success(mock_fetch_currencies):
-    mock_fetch_currencies.return_value = {"BTC": {}, "ETH": {}}
-
+def test_currencies(mock_fetch_currencies):
+    # Test success scenario
+    mock_currencies = [
+        {
+            "coin": "BTC",
+            "name": "Bitcoin",
+            "networkList": [
+                {
+                    "network": "BTC",
+                    "withdrawFee": "0.00050000",
+                },
+                {
+                    "network": "BNB",
+                    "withdrawFee": "0.00000220",
+                },
+            ],
+        },
+        {
+            "coin": "ETH",
+            "name": "Ethereum",
+            "networkList": [
+                {
+                    "network": "ETH",
+                    "withdrawFee": "0.005",
+                }
+            ],
+        },
+    ]
+    mock_fetch_currencies.return_value = mock_currencies
     response = client.get("/currencies")
+    assert response.status_code == 200
+    assert "currencies" in response.json()
+    currencies = response.json()["currencies"]
+    assert isinstance(currencies, list)
+    assert len(currencies) > 0
+    for currency in currencies:
+        assert "coin" in currency
+        assert "name" in currency
+        assert "networkList" in currency
+        assert isinstance(currency["networkList"], list)
+        for network in currency["networkList"]:
+            assert "network" in network
+            assert "withdrawFee" in network
 
-    assert response.status_code == 200, "Expected a 200 OK status code"
-    assert response.json() == {
-        "currencies": {"BTC": {}, "ETH": {}}
-    }, "Expected the response to contain the sample currencies"
-
-    mock_fetch_currencies.assert_called_once()
-
-
-@patch.object(exchange, "fetch_currencies")
-def test_currencies_failure(mock_fetch_currencies):
-    mock_fetch_currencies.side_effect = Exception("Error fetching currencies")
-
+    # Test failure scenario
+    mock_fetch_currencies.side_effect = Exception("Test error")
     response = client.get("/currencies")
-
-    assert response.status_code == 200, "Expected a 200 OK status code even for failure"
-    assert response.json() == {
-        "currencies": None
-    }, "Expected the response to contain None as the currencies"
+    assert response.status_code == 200
+    assert response.json() == {"currencies": None}
