@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 import os
 from helpers import get_binance_deposit_address, withdraw_to_network
 
-# Load environment variables from .env file
 load_dotenv()
 
 exchange = ccxt.binanceus(
@@ -31,11 +30,19 @@ async def withdraw(token: str, amount: float, address: str, network: str):
 
 @app.get("/balance")
 async def balance():
-    balance = exchange.fetch_balance()
-    return {"balance": balance}
+    try:
+        balance = exchange.fetch_balance()
+        return {"balance": balance}
+    except Exception as e:
+        print(f"Error fetching balance: {str(e)}")
+        return {"balance": None}
 
 
 @app.get("/currencies")
 async def currencies():
-    currencies = exchange.fetch_currencies()
-    return {"currencies": currencies}
+    try:
+        currencies = exchange.fetch_currencies()
+        return {"currencies": currencies}
+    except Exception as e:
+        print(f"Error fetching currencies: {str(e)}")
+        return {"currencies": None}

@@ -82,9 +82,9 @@ def test_balance_failure(mock_fetch_balance):
     response = client.get("/balance")
 
     assert response.status_code == 200, "Expected a 200 OK status code even for failure"
-    assert (
-        "balance" in response.json()
-    ), "Expected the response to contain a balance key"
+    assert response.json() == {
+        "balance": None
+    }, "Expected the response to contain None as the balance"
 
 
 @patch.object(exchange, "fetch_currencies")
@@ -108,6 +108,6 @@ def test_currencies_failure(mock_fetch_currencies):
     response = client.get("/currencies")
 
     assert response.status_code == 200, "Expected a 200 OK status code even for failure"
-    assert (
-        "currencies" in response.json()
-    ), "Expected the response to contain a currencies key"
+    assert response.json() == {
+        "currencies": None
+    }, "Expected the response to contain None as the currencies"
