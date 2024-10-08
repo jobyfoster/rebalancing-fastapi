@@ -26,11 +26,17 @@ def test_deposit_address(mock_get_deposit_address):
 
 
 @patch("helpers.withdraw_to_network")
-def test_withdraw(mock_withdraw):
+@patch("toml.load")
+def test_withdraw(mock_toml_load, mock_withdraw):
+    # Mock the toml.load function to return a predefined accounts dictionary
+    mock_toml_load.return_value = {
+        "accounts": [{"name": "test-account", "address": "test_address"}]
+    }
+
     # Test success scenario
     mock_withdraw.return_value = {"id": "7213fea8e94b4a5593d507237e5a555b"}
     response = client.get(
-        "/withdraw?token=BTC&amount=0.1&address=test_address&network=BTC"
+        "/withdraw?token=BTC&amount=0.1&account_name=test-account&network=BTC"
     )
     assert response.status_code == 200
     assert "withdrawal" in response.json()
@@ -38,10 +44,17 @@ def test_withdraw(mock_withdraw):
     assert isinstance(response.json()["withdrawal"]["id"], str)
     assert len(response.json()["withdrawal"]["id"]) == 32
 
+    # Test account not found scenario
+    response = client.get(
+        "/withdraw?token=BTC&amount=0.1&account_name=non-existent&network=BTC"
+    )
+    assert response.status_code == 200
+    assert response.json() == {"error": "Account 'non-existent' not found"}
+
     # Test failure scenario
     mock_withdraw.return_value = None
     response = client.get(
-        "/withdraw?token=BTC&amount=0.1&address=test_address&network=BTC"
+        "/withdraw?token=BTC&amount=0.1&account_name=test-account&network=BTC"
     )
     assert response.status_code == 200
     assert response.json() == {"withdrawal": None}
