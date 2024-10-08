@@ -51,9 +51,20 @@ async def withdraw(token: str, amount: float, account_name: str, network: str):
 
 
 @app.get("/balance")
-async def balance():
+async def balance(token: str = None):
     try:
         balance = exchange.fetch_balance()
+        if token:
+            if token in balance["free"]:
+                return {
+                    "balance": {
+                        "free": balance["free"][token],
+                        "used": balance["used"][token],
+                        "total": balance["total"][token],
+                    }
+                }
+            else:
+                return {"error": f"Token {token} not found in balance"}
         return {"balance": balance}
     except Exception as e:
         print(f"Error fetching balance: {str(e)}")
