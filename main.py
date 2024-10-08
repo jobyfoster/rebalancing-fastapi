@@ -38,6 +38,14 @@ async def withdraw(token: str, amount: float, account_name: str, network: str):
     if not address:
         return {"error": f"Account '{account_name}' not found"}
 
+    balance = exchange.fetch_balance()
+    token_balance = balance["free"][token]
+    if token_balance is None:
+        return {"error": f"Unable to fetch balance for {token}"}
+
+    if token_balance < amount:
+        return {"error": f"Insufficient balance for {token}"}
+
     withdrawal = withdraw_to_network(exchange, token, amount, address, network)
     return {"withdrawal": withdrawal}
 
